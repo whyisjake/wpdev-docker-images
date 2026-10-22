@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+/*
+ * PHPUnit 3.6 launcher.
+ *
+ * PHP 5.2 has no PHP_BINARY, so when this file is the value of $_SERVER['_'], PHPUnit reads its shebang to
+ * find the PHP binary for @runInSeparateProcess and --process-isolation. It uses the first word after the
+ * interpreter, here "php", so the shebang cannot carry -d arguments and the PHP settings are applied below.
+ */
+
+set_include_path( '.' . PATH_SEPARATOR . '/usr/local/lib/phpunit' );
+ini_set( 'memory_limit', '1G' );
+
+define( 'PHPUnit_MAIN_METHOD', 'PHPUnit_TextUI_Command::main' );
+
+require '/usr/local/lib/phpunit/PHPUnit/Autoload.php';
+
+PHPUnit_TextUI_Command::main();

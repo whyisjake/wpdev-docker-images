@@ -5,9 +5,11 @@ ARG PR_TAG
 #
 # PHPUnit 3.6 is the last release series that runs on PHP 5.2. It has no PHAR (PHARs need PHP 5.3) and is
 # no longer published to Packagist or a PEAR channel, so it is assembled from the upstream GitHub
-# repositories, pinned to the commits of these tags: phpunit 3.6.12, php-file-iterator 1.3.4,
-# php-text-template 1.1.4, php-code-coverage 1.1.3, php-token-stream 1.1.5, php-timer 1.0.4 and
-# phpunit-mock-objects 1.1.1. This happens in a separate stage because the Debian 8 based PHP image
+# repositories, pinned to the commits of these tags: phpunit 3.6.12, php-file-iterator 1.3.2,
+# php-text-template 1.1.2, php-code-coverage 1.1.3, php-token-stream 1.1.4, php-timer 1.0.3 and
+# phpunit-mock-objects 1.1.1. These are the last releases whose Autoload.php defines the named
+# *_autoload() functions that PHPUnit 3.6 calls; later releases register a closure, which PHP 5.2
+# cannot parse. This happens in a separate stage because the Debian 8 based PHP image
 # cannot connect to GitHub with its git and CA certificates.
 FROM alpine:3 AS phpunit-src
 
@@ -18,11 +20,11 @@ RUN set -ex; \
 	cd /src; \
 	for package in \
 		phpunit:4c39b23563ef46b267b69abf8d28b30cc7e85c67 \
-		php-file-iterator:acd690379117b042d1c8af1fafd61bde001bf6bb \
-		php-text-template:5180896f51c5b3648ac946b05f9ec02be78a0b23 \
+		php-file-iterator:46b0610951db3a918ee7842bc0d471e72c1d0d46 \
+		php-text-template:1da672430d58dcbb21139a018febe038d8500fd8 \
 		php-code-coverage:b8ffefe693d2ceae6446f7473cc2ef7ef09559b5 \
-		php-token-stream:ffb5e70adbc7cb1d4091ac0f8335b6fcff52cd75 \
-		php-timer:19fa03d75db7eb732db5256fe7f08a66116ace90 \
+		php-token-stream:dd11f1b0c071dc46fe711a7dd331db1b2179b9be \
+		php-timer:5175e9bb35fc9cc430973ed83a3d62531c3c8698 \
 		phpunit-mock-objects:d7c478dd488e8e2e3d6a3332700458da49e6f1f3; \
 	do \
 		name=${package%%:*}; \
@@ -34,15 +36,7 @@ RUN set -ex; \
 			if [ -d "$name/$dir" ]; then cp -R "$name/$dir" /phpunit/; fi; \
 		done; \
 	done; \
-	cp phpunit/phpunit.php /phpunit/phpunit.php; \
 	sed -i 's/@package_version@/3.6.12/' /phpunit/PHPUnit/Runner/Version.php
-
-# The autoloaders of the dependency packages use closures, which PHP 5.2 cannot parse.
-COPY autoload.php /autoload.php
-
-RUN for autoloader in File/Iterator PHP/CodeCoverage PHP/Timer PHP/Token/Stream PHPUnit/Framework/MockObject Text/Template; do \
-		cp /autoload.php "/phpunit/$autoloader/Autoload.php"; \
-	done
 
 FROM $PACKAGE_REGISTRY/php:5.2-fpm$PR_TAG
 
@@ -55,7 +49,9 @@ FROM $PACKAGE_REGISTRY/php:5.2-fpm$PR_TAG
 
 COPY --from=phpunit-src /phpunit /usr/local/lib/phpunit
 
-RUN printf '#!/bin/sh\nexec php -d include_path=.:/usr/local/lib/phpunit -d memory_limit=1G /usr/local/lib/phpunit/phpunit.php "$@"\n' > /usr/local/bin/phpunit && chmod +x /usr/local/bin/phpunit
+COPY phpunit /usr/local/bin/phpunit
+
+RUN chmod +x /usr/local/bin/phpunit
 
 WORKDIR /var/www
 
